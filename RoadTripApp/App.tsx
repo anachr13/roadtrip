@@ -5,127 +5,182 @@
  * @format
  */
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {NavigationContainer} from '@react-navigation/native';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {enableScreens} from 'react-native-screens';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {RoadTrip, Location} from './src/types';
+import {theme} from './src/theme';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+// Import screens
+import {HomeScreen} from './src/screens/HomeScreen';
+import {CreateTripScreen} from './src/screens/CreateTripScreen';
+import {TripDetailsScreen} from './src/screens/TripDetailsScreen';
+import {SearchLocationScreen} from './src/screens/SearchLocationScreen';
+import {LocationDetailsScreen} from './src/screens/LocationDetailsScreen';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+// Enable native screens
+enableScreens();
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+export type RootStackParamList = {
+  Home: {
+    roadTrips: RoadTrip[];
+    onDeleteTrip: (id: string) => void;
+    onCreateTrip: (name: string, description: string) => void;
+    onUpdateLocations: (tripId: string, locations: Location[]) => void;
+    onDeleteLocation: (tripId: string, locationId: string) => void;
+  };
+  CreateTrip: {
+    onCreateTrip: (name: string, description: string) => void;
+  };
+  TripDetails: {
+    trip?: RoadTrip;
+    onUpdateLocations: (tripId: string, locations: Location[]) => void;
+    onDeleteLocation: (tripId: string, locationId: string) => void;
+  };
+  SearchLocation: {
+    onSelectLocation: (location: Location) => void;
+  };
+  LocationDetails: {
+    location: Location;
+  };
+};
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator();
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+const MainStack = () => {
+  const [roadTrips, setRoadTrips] = useState<RoadTrip[]>([]);
+
+  const handleCreateTrip = (name: string, description: string) => {
+    const newTrip: RoadTrip = {
+      id: Date.now().toString(),
+      name,
+      description,
+      locations: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setRoadTrips([...roadTrips, newTrip]);
   };
 
-  /*
-   * To keep the template simple and small we're adding padding to prevent view
-   * from rendering under the System UI.
-   * For bigger apps the reccomendation is to use `react-native-safe-area-context`:
-   * https://github.com/AppAndFlow/react-native-safe-area-context
-   *
-   * You can read more about it here:
-   * https://github.com/react-native-community/discussions-and-proposals/discussions/827
-   */
-  const safePadding = '5%';
+  const handleDeleteTrip = (tripId: string) => {
+    setRoadTrips(roadTrips.filter(trip => trip.id !== tripId));
+  };
+
+  const handleUpdateLocations = (tripId: string, locations: Location[]) => {
+    setRoadTrips(
+      roadTrips.map(trip =>
+        trip.id === tripId
+          ? {
+              ...trip,
+              locations,
+              updatedAt: new Date().toISOString(),
+            }
+          : trip,
+      ),
+    );
+  };
+
+  const handleDeleteLocation = (tripId: string, locationId: string) => {
+    setRoadTrips(
+      roadTrips.map(trip =>
+        trip.id === tripId
+          ? {
+              ...trip,
+              locations: trip.locations.filter(loc => loc.id !== locationId),
+              updatedAt: new Date().toISOString(),
+            }
+          : trip,
+      ),
+    );
+  };
 
   return (
-    <View style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.white,
+        },
+        headerTintColor: theme.text,
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}>
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{title: 'My Trips'}}
+        initialParams={{
+          roadTrips,
+          onDeleteTrip: handleDeleteTrip,
+          onCreateTrip: handleCreateTrip,
+          onUpdateLocations: handleUpdateLocations,
+          onDeleteLocation: handleDeleteLocation,
+        }}
       />
-      <ScrollView
-        style={backgroundStyle}>
-        <View style={{paddingRight: safePadding}}>
-          <Header/>
-        </View>
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-            paddingHorizontal: safePadding,
-            paddingBottom: safePadding,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </View>
+      <Stack.Screen
+        name="CreateTrip"
+        component={CreateTripScreen}
+        options={{title: 'Create New Trip'}}
+        initialParams={{
+          onCreateTrip: handleCreateTrip,
+        }}
+      />
+      <Stack.Screen
+        name="TripDetails"
+        component={TripDetailsScreen}
+        options={{title: 'Trip Details'}}
+        initialParams={{
+          onUpdateLocations: handleUpdateLocations,
+          onDeleteLocation: handleDeleteLocation,
+        }}
+      />
+      <Stack.Screen
+        name="SearchLocation"
+        component={SearchLocationScreen}
+        options={{title: 'Search Location'}}
+      />
+      <Stack.Screen
+        name="LocationDetails"
+        component={LocationDetailsScreen}
+        options={{title: 'Location Details'}}
+      />
+    </Stack.Navigator>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
+const App = () => {
+  return (
+    <GestureHandlerRootView style={{flex: 1}}>
+      <NavigationContainer>
+        <Tab.Navigator
+          screenOptions={{
+            tabBarActiveTintColor: theme.primary,
+            tabBarInactiveTintColor: theme.textSecondary,
+            tabBarStyle: {
+              backgroundColor: theme.white,
+              borderTopColor: theme.border,
+            },
+            headerShown: false,
+          }}>
+          <Tab.Screen
+            name="MainStack"
+            component={MainStack}
+            options={{
+              tabBarLabel: 'Trips',
+              tabBarIcon: ({color, size}) => (
+                <Icon name="map-marker-multiple" size={size} color={color} />
+              ),
+            }}
+          />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </GestureHandlerRootView>
+  );
+};
 
 export default App;
